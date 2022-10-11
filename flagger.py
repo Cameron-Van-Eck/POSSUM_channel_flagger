@@ -30,14 +30,7 @@ def find_bad_channels(cubename,extreme_limit=1e10,noise_abs=1e5,local_size=10,
         cubename (str): path (absolute, or relative to run directory) to FITS cube
         extreme_limit (float, default 1e10): value (in data units) that constitutes 
             an extreme (a value too high to be realistic)
-        noise_abs (float, default 1e5): value (in data units) of the largest
-            acceptable channel noise.
-        local_size (int, default 10): Size of box to use when analyzing local
-            spectral properties
-        local_extreme_deviation (float, default 5): maximum allowed multiple 
-            of the local median extreme (also 1/this value is allowed minimum)
-        local_noise_deviation (float, default 5): maximum allowed multiple 
-            of the local median noise (also 1/this value is allowed minimum)
+        test kwargs: See test_channels() docstring for description.
     
     Returns: tuple of 3 elements
         array of bools. True = good channel, False = bad channel
@@ -98,7 +91,8 @@ def test_channels(extrema,noise,extreme_limit=1e10,noise_abs=1e5,local_size=10,
                       local_extreme_deviation=5,local_noise_deviation=5):
     """Perform tests of channel quality.
     Inputs: 
-        cubename (str): path (absolute, or relative to run directory) to FITS cube
+        extrema (float array): value of maximum absolute value of each channel
+        noise (float array): value of noise (corrected MADFM) of each channel
         extreme_limit (float, default 1e10): value (in data units) that constitutes 
             an extreme (a value too high to be realistic)
         noise_abs (float, default 1e5): value (in data units) of the largest
@@ -151,9 +145,9 @@ def test_channels(extrema,noise,extreme_limit=1e10,noise_abs=1e5,local_size=10,
 
 def check_all_cubes(cubename,extreme_limit=1e10,noise_abs=1e5,local_size=10,
                       local_extreme_deviation=5,local_noise_deviation=5):
-    """Finds band channels for all Stokes cubes present (including V if file 
-    exists), and combines (if a channel is bad in one Stokes, it's set bad for
-    all). Uses find_bad_channels() on each Stokes cube; see that function for
+    """Finds band channels for all Stokes cubes present, and combines 
+    (if a channel is bad in one Stokes, it's set bad for all). 
+    Uses find_bad_channels() on each Stokes cube; see that function for
                            description of method.
     Inputs: 
         cubename (str): path+filename to a Stokes cube. It is a assumed to have
@@ -161,24 +155,55 @@ def check_all_cubes(cubename,extreme_limit=1e10,noise_abs=1e5,local_size=10,
             Any Stokes parameter can be provided; the other files will be 
             inferred to have the same names other than the Stokes parameter.
     
+        test kwargs: See test_channels() docstring for description.
+    
     """
+
+    header = pf.getheader(cubename)
+    
+    #Get frequency axis:
+    for key, value in header.items():
+        if type(value) is str:
+            if value.lower() == "freq":
+                n_axis = int(key[-1])
+    num_chan=header['NAXIS'+str(n_axis)]
+
+
 
     generic_filename=cubename.replace('.i.','._.').replace('.q.','._.').replace('.u.','._.').replace('.v.','._.')
 
-    print('Starting Stokes I characterization.')
-    I_channels,I_extrema,I_noise=find_bad_channels(generic_filename.replace('._.','.i.'),
+    #Run on each Stokes present:
+    if os.path.exists(generic_filename.replace('._.','.i.')):
+        print('Starting Stokes I characterization.')
+        I_channels,I_extrema,I_noise=find_bad_channels(generic_filename.replace('._.','.i.'),
+                                     extreme_limit,noise_abs,local_size,
+                                     local_extreme_deviation,local_noise_deviation)
+    else:
+        I_channels=np.ones(num_chan)
+        I_extrema=np.ones(num_chan)
+        I_noise=np.ones(num_chan)
+
+    if os.path.exists(generic_filename.replace('._.','.q.')):
+        print('Starting Stokes Q characterization.')
+        Q_channels,Q_extrema,Q_noise=find_bad_channels(generic_filename.replace('._.','.q.'),
                                  extreme_limit,noise_abs,local_size,
                                  local_extreme_deviation,local_noise_deviation)
-    print('Starting Stokes Q characterization.')
-    Q_channels,Q_extrema,Q_noise=find_bad_channels(generic_filename.replace('._.','.q.'),
+    else:
+        Q_channels=np.ones(num_chan)
+        Q_extrema=np.ones(num_chan)
+        Q_noise=np.ones(num_chan)
+
+
+    if os.path.exists(generic_filename.replace('._.','.u.')):
+        print('Starting Stokes U characterization.')
+        U_channels,U_extrema,U_noise=find_bad_channels(generic_filename.replace('._.','.u.'),
                                  extreme_limit,noise_abs,local_size,
                                  local_extreme_deviation,local_noise_deviation)
-    print('Starting Stokes U characterization.')
-    U_channels,U_extrema,U_noise=find_bad_channels(generic_filename.replace('._.','.u.'),
-                                 extreme_limit,noise_abs,local_size,
-                                 local_extreme_deviation,local_noise_deviation)
+    else:
+        U_channels=np.ones(num_chan)
+        U_extrema=np.ones(num_chan)
+        U_noise=np.ones(num_chan)
     
-    #If V is present, include it. Otherwise, assume V has no problems.
     if os.path.exists(generic_filename.replace('._.','.v.')):
         print('Starting Stokes V characterization.')
         V_channels,V_extrema,V_noise=find_bad_channels(generic_filename.replace('._.','.v.'),
@@ -259,14 +284,19 @@ def flag_all_Stokes(cubename,channel_flags):
     """
     generic_filename=cubename.replace('.i.','._.').replace('.q.','._.').replace('.u.','._.').replace('.v.','._.')
 
-    print('Starting Stokes I flagging.')
-    flag_cube(generic_filename.replace('._.','.i.'),channel_flags)
-    print('Starting Stokes Q flagging.')
-    flag_cube(generic_filename.replace('._.','.q.'),channel_flags)
-    print('Starting Stokes U flagging.')
-    flag_cube(generic_filename.replace('._.','.u.'),channel_flags)
-    
-    #If V is present, include it. Otherwise, assume V has no problems.
+    #Correct each Stokes cube that exists
+    if os.path.exists(generic_filename.replace('._.','.i.')):
+        print('Starting Stokes I flagging.')
+        flag_cube(generic_filename.replace('._.','.i.'),channel_flags)
+
+    if os.path.exists(generic_filename.replace('._.','.q.')):
+        print('Starting Stokes Q flagging.')
+        flag_cube(generic_filename.replace('._.','.q.'),channel_flags)
+
+    if os.path.exists(generic_filename.replace('._.','.u.')):
+        print('Starting Stokes U flagging.')
+        flag_cube(generic_filename.replace('._.','.u.'),channel_flags)
+
     if os.path.exists(generic_filename.replace('._.','.v.')):
         print('Starting Stokes V flagging.')
         flag_cube(generic_filename.replace('._.','.v.'),channel_flags)
@@ -345,15 +375,15 @@ def command_line():
                                         local_noise_threshold,local_extreme_threshold)
         
         outdata=np.vstack((channel_flags,channel_stats))
-        np.savetxt(args.statsfile,outdata)
+        np.savetxt(args.statsfile,outdata.transpose())
     else: #Or read them from file:
         if not os.path.exists(args.statsfile):
             raise Exception('Stats file could not be found; required as input with -s flag set!')
-        indata=np.loadtxt(args.statsfile)
-        channel_flags=indata[0]
+        indata=np.loadtxt(args.statsfile).transpose()
+        channel_flags=indata[0].astype(bool)
     
     if args.applyflags:
-        flag_all_Stokes()
+        flag_all_Stokes(args.cubefile,channel_flags)
 
 
 
