@@ -73,6 +73,7 @@ def find_bad_channels(cubename,extreme_limit=1e10,noise_abs=1e5,local_size=10,
             chan=data[i,:,:]
         else:
             raise Exception('File dimensions do not seem correct? Cannot slice cube.')
+        progress(40, i/extrema.size*100.)
 
         extrema[i]=np.nanmax(np.abs(chan))
         noise[i]=MAD(chan)
@@ -410,6 +411,27 @@ def MAD(a, c=0.6745, axis=None):
         m = np.ma.median(np.ma.fabs(aswp - d) / c, axis=axis)
 
     return m
+
+from math import floor
+import sys
+
+def progress(width, percent):
+    """
+    Print a progress bar to the terminal.
+    Stolen from Mike Bell.
+    """
+
+    marks = floor(width * (percent / 100.0))
+    spaces = floor(width - marks)
+    loader = '  [' + ('=' * int(marks)) + (' ' * int(spaces)) + ']'
+    sys.stdout.write("%s %d%%\r" % (loader, percent))
+    if percent >= 100:
+        sys.stdout.write("\n")
+    sys.stdout.flush()
+
+
+
+
 
 
 
