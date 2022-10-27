@@ -18,7 +18,7 @@ import numpy as np
 import os
 
 
-def find_bad_channels(cubename,extreme_limit=1e10,noise_abs=1e5,local_size=10,
+def find_bad_channels(cubename,extreme_limit=1e5,noise_abs=1e2,local_size=10,
                       local_extreme_deviation=5,local_noise_deviation=5):
     """Find the bad channels in a (single-Stokes) FITS cube, by searching
     for channels with unusual statistical properties (far too noisy, extreme values)
@@ -28,8 +28,6 @@ def find_bad_channels(cubename,extreme_limit=1e10,noise_abs=1e5,local_size=10,
     
     Inputs: 
         cubename (str): path (absolute, or relative to run directory) to FITS cube
-        extreme_limit (float, default 1e10): value (in data units) that constitutes 
-            an extreme (a value too high to be realistic)
         test kwargs: See test_channels() docstring for description.
     
     Returns: tuple of 3 elements
@@ -88,15 +86,15 @@ def find_bad_channels(cubename,extreme_limit=1e10,noise_abs=1e5,local_size=10,
 
 
 
-def test_channels(extrema,noise,extreme_limit=1e10,noise_abs=1e5,local_size=10,
+def test_channels(extrema,noise,extreme_limit=1e5,noise_abs=1e2,local_size=10,
                       local_extreme_deviation=5,local_noise_deviation=5):
     """Perform tests of channel quality.
     Inputs: 
         extrema (float array): value of maximum absolute value of each channel
         noise (float array): value of noise (corrected MADFM) of each channel
-        extreme_limit (float, default 1e10): value (in data units) that constitutes 
+        extreme_limit (float, default 1e5): value (in data units) that constitutes 
             an extreme (a value too high to be realistic)
-        noise_abs (float, default 1e5): value (in data units) of the largest
+        noise_abs (float, default 1e2): value (in data units) of the largest
             acceptable channel noise.
         local_size (int, default 10): Size of box to use when analyzing local
             spectral properties
@@ -144,7 +142,7 @@ def test_channels(extrema,noise,extreme_limit=1e10,noise_abs=1e5,local_size=10,
 
 
 
-def check_all_cubes(cubename,extreme_limit=1e10,noise_abs=1e5,local_size=10,
+def check_all_cubes(cubename,extreme_limit=1e5,noise_abs=1e2,local_size=10,
                       local_extreme_deviation=5,local_noise_deviation=5):
     """Finds band channels for all Stokes cubes present, and combines 
     (if a channel is bad in one Stokes, it's set bad for all). 
@@ -348,10 +346,10 @@ def command_line():
     parser.add_argument("-s", dest="skipstats", action="store_true",
                         help="Skip stats computation (used supplied stats file) [False].")
 
-    parser.add_argument("-e", dest="extreme_limit", type=float, default=1e10,
-                        help="Intensity threshold for extreme values. [1e10]")
-    parser.add_argument("-n", dest="noise_limit", type=float, default=1e5,
-                        help="Noise threshold for extreme values. [1e5]")
+    parser.add_argument("-e", dest="extreme_limit", type=float, default=1e5,
+                        help="Intensity threshold for extreme values. [1e5]")
+    parser.add_argument("-n", dest="noise_limit", type=float, default=1e2,
+                        help="Noise threshold for extreme values. [1e2]")
     parser.add_argument("-l", dest="local", nargs=3, action='store',
                         type=float, default=[10, 5, 5],
                         help="Number of channels for local estimation, threshold multiple of local noise, threshold multiple for local extrema. [10 5 5]")
